@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vehicle Check Verification</title>
+
+<!-- ================= CSS ================= -->
+<style>
+/* ---------- Base (mobile first) ---------- */
+* { box-sizing: border-box; }
+
+:root {
+  --ink: #1c2430;
+  --muted: #62707f;
+  --line: #d9e0e8;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+
+  --red-bg: #ffe9e9;
+  --red-line: #d32f2f;
+  --red-ink: #b71c1c;
+
+  --green-bg: #e6f6ea;
+  --green-line: #2e7d32;
+  --green-ink: #1b5e20;
+
+  --grey-bg: #f0f2f5;
+  --grey-line: #9aa5b1;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 14px 14px 28px;
+}
+
+/* ---------- Header ---------- */
+.header {
+  background: #1f3350;
+  color: #fff;
+  padding: 18px 14px;
+  text-align: center;
+}
+.header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.25;
+  letter-spacing: .2px;
+}
+.subtitle {
+  margin: 6px 0 0;
+  font-size: .98rem;
+  opacity: .85;
+}
+
+/* ---------- Search ---------- */
+.search-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 1px 3px rgba(20, 35, 60, .07);
+}
+
+.search-row { display: block; }
+
+.input-wrap { position: relative; }
+
+#vehicleInput {
+  width: 100%;
+  padding: 16px 14px;
+  font-size: 1.25rem;          /* >=16px prevents iOS zoom */
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: #fff;
+  border: 2px solid #c3cdd8;
+  border-radius: 10px;
+  outline: none;
+}
+#vehicleInput::placeholder {
+  font-size: .95rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #90a0b0;
+}
+#vehicleInput:focus { border-color: #1f6fd0; box-shadow: 0 0 0 3px rgba(31, 111, 208, .15); }
+
+.btn-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.btn {
+  flex: 1 1 0;
+  min-height: 50px;
+  padding: 12px 14px;
+  font-size: 1.02rem;
+  font-weight: 700;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.btn-search { background: #1f6fd0; color: #fff; }
+.btn-search:active { background: #1a5cae; }
+.btn-clear { background: #eef1f5; color: #3b4756; border-color: var(--line); }
+.btn-clear:active { background: #e2e7ee; }
+
+.hint {
+  margin: 12px 0 0;
+  font-size: .88rem;
+  color: var(--muted);
+}
+.hint b { color: #34424f; }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 8px 0 0;
+  font-size: .82rem;
+  font-weight: 600;
+}
+.legend-red { color: var(--red-ink); }
+.legend-green { color: var(--green-ink); }
+
+/* ---------- Suggestions ---------- */
+.suggestions {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  max-height: 46vh;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 8px 22px rgba(20, 35, 60, .16);
+  -webkit-overflow-scrolling: touch;
+}
+.suggestions li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 12px;
+  border-radius: 8px;
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: .6px;
+  cursor: pointer;
+}
+.suggestions li + li { border-top: 1px solid #eef1f5; }
+.suggestions li.active, .suggestions li:hover { background: #eef5ff; }
+.suggestions .dot { font-size: .95rem; }
+.suggestions .tag {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.tag-red { background: var(--red-bg); color: var(--red-ink); }
+.tag-green { background: var(--green-bg); color: var(--green-ink); }
+.suggestions .more {
+  padding: 8px 12px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: default;
+  border-top: 1px solid #eef1f5;
+}
+.suggestions .more:hover { background: transparent; }
+
+/* ---------- Data status ---------- */
+.data-status {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  font-size: .88rem;
+  color: var(--muted);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.data-status.error {
+  color: #8a4b00;
+  background: #fff5e6;
+  border-color: #f0b357;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.data-status.error .reason {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: .84rem;
+  font-weight: 500;
+  color: #7a5a20;
+  word-break: break-word;
+}
+.data-status.error #retryBtn {
+  flex: 0 0 auto;
+  margin-top: 10px;
+  min-height: 42px;
+  padding: 9px 18px;
+  font-size: .95rem;
+  background: #fff;
+}
+
+/* ---------- Results ---------- */
+.results { margin-top: 14px; }
+
+.results-title {
+  margin: 4px 2px 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #34424f;
+}
+
+.card {
+  border: 3px solid var(--grey-line);
+  border-radius: 14px;
+  background: var(--grey-bg);
+  padding: 16px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.card .status {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: .5px;
+}
+.card .plate {
+  margin: 10px 0 0;
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  word-break: break-all;
+}
+.card .meta {
+  margin: 10px 0 0;
+  font-size: .95rem;
+  color: #40505f;
+}
+.card .meta .label { display: block; font-size: .8rem; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+.card .meta .value { font-size: 1.15rem; font-weight: 700; color: var(--ink); }
+.card .note {
+  margin: 14px 0 0;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: .3px;
+  background: rgba(255, 255, 255, .7);
+}
+
+.card.red { background: var(--red-bg); border-color: var(--red-line); }
+.card.red .status, .card.red .note { color: var(--red-ink); }
+.card.green { background: var(--green-bg); border-color: var(--green-line); }
+.card.green .status, .card.green .note { color: var(--green-ink); }
+.card.grey .status { color: #4b5867; }
+.card.grey .plate { font-size: 1.4rem; }
+
+/* compact rows used when a search matches several vehicles */
+.row-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  padding: 14px;
+  margin-bottom: 10px;
+  border: 3px solid var(--grey-line);
+  border-radius: 12px;
+}
+.row-card.red { background: var(--red-bg); border-color: var(--red-line); }
+.row-card.green { background: var(--green-bg); border-color: var(--green-line); }
+.row-card .plate {
+  font-size: 1.22rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  word-break: break-all;
+}
+.row-card .sub { font-size: .85rem; color: #45525f; margin-top: 3px; }
+.row-card .state {
+  flex: 0 0 auto;
+  font-size: .9rem;
+  font-weight: 800;
+  letter-spacing: .4px;
+  text-align: right;
+}
+.row-card.red .state { color: var(--red-ink); }
+.row-card.green .state { color: var(--green-ink); }
+
+.list-note {
+  margin: 2px 2px 0;
+  padding: 10px 12px;
+  font-size: .86rem;
+  line-height: 1.5;
+  color: #45525f;
+  background: #fff;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+}
+
+/* ---------- Footer ---------- */
+.footer {
+  padding: 8px 14px 24px;
+  text-align: center;
+  font-size: .78rem;
+  color: #7b8794;
+}
+.footer code { background: #e9edf2; padding: 1px 5px; border-radius: 4px; }
+
+/* ---------- Small phones ---------- */
+@media (max-width: 360px) {
+  .header h1 { font-size: 1.18rem; }
+  #vehicleInput { font-size: 1.1rem; padding: 14px 12px; }
+  .card .plate { font-size: 1.45rem; }
+  .card .status { font-size: 1.15rem; }
+  .btn { font-size: .95rem; min-height: 46px; }
+}
+
+/* ---------- Tablet / desktop ---------- */
+@media (min-width: 640px) {
+  .header { padding: 24px 16px; }
+  .header h1 { font-size: 1.7rem; }
+  .wrap { padding: 20px 20px 36px; }
+  .search-card { padding: 18px; }
+
+  .search-row { display: flex; align-items: flex-start; gap: 12px; }
+  .input-wrap { flex: 1 1 auto; }
+  .btn-row { margin-top: 0; flex: 0 0 auto; }
+  .btn { min-width: 118px; }
+
+  #vehicleInput { font-size: 1.35rem; }
+  .card { padding: 22px; }
+  .card .status { font-size: 1.5rem; }
+  .card .plate { font-size: 2.1rem; }
+  .row-card .plate { font-size: 1.35rem; }
+}
+
+@media (hover: none) {
+  .suggestions li:hover { background: #fff; }
+  .suggestions li.active { background: #eef5ff; }
+}
+</style>
+</head>
+<body>
+
+  <header class="header">
+    <h1>🚛 Vehicle Check Verification</h1>
+    <p class="subtitle">Search vehicle number</p>
+  </header>
+
+  <main class="wrap">
+
+    <section class="search-card">
+      <form id="searchForm" autocomplete="off">
+        <div class="search-row">
+          <div class="input-wrap">
+            <input
+              id="vehicleInput"
+              type="text"
+              inputmode="text"
+              placeholder="Enter vehicle number / last 4 digits"
+              aria-label="Enter vehicle number or last 4 digits"
+              aria-autocomplete="list"
+              aria-controls="suggestions"
+              spellcheck="false">
+            <ul id="suggestions" class="suggestions" role="listbox" hidden></ul>
+          </div>
+          <div class="btn-row">
+            <button type="submit" class="btn btn-search">🔍 Search</button>
+            <button type="button" id="clearBtn" class="btn btn-clear">✕ Clear</button>
+          </div>
+        </div>
+      </form>
+      <p class="hint">You can search: <b>MH</b>, <b>3434</b>, <b>MH27</b>, <b>MH27AB3434</b></p>
+      <p class="legend">
+        <span class="legend-red">&#128308; In the list = ALREADY CHECKED</span>
+        <span class="legend-green">&#128994; Not in the list = CHECK THIS VEHICLE</span>
+      </p>
+    </section>
+
+    <div id="dataStatus" class="data-status" role="status">Loading vehicle data…</div>
+
+    <section id="results" class="results" aria-live="polite"></section>
+
+  </main>
+
+  <footer class="footer">
+    Data source: <code>vehicles.csv</code> &middot; refresh the page after the daily update
+  </footer>
+
+<!-- ================= JAVASCRIPT ================= -->
+<script>
+'use strict';
+
+/* ============================================================
+   Vehicle Check Verification
+   ------------------------------------------------------------
+   vehicles.csv holds ONLY the vehicles that are already checked.
+
+     found in the list      ->  RED   : ALREADY CHECKED
+     not found in the list  ->  GREEN : NOT CHECKED (can be checked)
+   ============================================================ */
+
+var CSV_FILE = 'vehicles.csv';
+var MAX_SUGGESTIONS = 10;
+
+var input      = document.getElementById('vehicleInput');
+var form       = document.getElementById('searchForm');
+var clearBtn   = document.getElementById('clearBtn');
+var suggestBox = document.getElementById('suggestions');
+var resultsBox = document.getElementById('results');
+var statusBox  = document.getElementById('dataStatus');
+
+var vehicles = [];          // one entry per unique checked vehicle
+var dataReady = false;
+var currentSuggestions = [];
+var activeIndex = -1;       // keyboard highlight inside the suggestion list
+
+/* ---------- helpers ---------- */
+
+function normalizeVehicleNumber(vehicle) {
+    return String(vehicle == null ? '' : vehicle)
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '');
+}
+
+function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, function (c) {
+        if (c === '&') return '&amp;';
+        if (c === '<') return '&lt;';
+        if (c === '>') return '&gt;';
+        if (c === '"') return '&quot;';
+        return '&#39;';
+    });
+}
+
+/* Looks like an Indian vehicle number, e.g. MH27AB3434 / MH12CD5678 */
+function looksLikeVehicleNumber(value) {
+    return /^[A-Z]{2}[0-9]{1,2}[A-Z]{0,3}[0-9]{3,4}$/.test(normalizeVehicleNumber(value));
+}
+
+/* ---------- dates ---------- */
+
+var MONTHS = {
+    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+};
+
+function fullYear(y) {
+    y = Number(y);
+    return y < 100 ? 2000 + y : y;
+}
+
+/* Date text -> sortable number. Supports 07-Sep-2026, 2026-09-07, 07/09/2026 */
+function parseDateValue(text) {
+    var s = String(text || '').trim();
+    if (!s) return -Infinity;
+    var m;
+
+    m = s.match(/^(\d{1,2})[-\/\s]([A-Za-z]{3,})[-\/\s](\d{2,4})/);     // 07-Sep-2026
+    if (m) {
+        var mon = MONTHS[m[2].slice(0, 3).toLowerCase()];
+        if (mon !== undefined) return new Date(fullYear(m[3]), mon, Number(m[1])).getTime();
+    }
+
+    m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);                        // 2026-09-07
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime();
+
+    m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/);              // 07/09/2026
+    if (m) return new Date(fullYear(m[3]), Number(m[2]) - 1, Number(m[1])).getTime();
+
+    var t = Date.parse(s);
+    return isNaN(t) ? -Infinity : t;
+}
+
+function looksLikeDate(value) {
+    return parseDateValue(value) !== -Infinity;
+}
+
+/* ---------- CSV parsing ---------- */
+
+function parseCSV(text) {
+    var rows = [];
+    var row = [];
+    var field = '';
+    var inQuotes = false;
+
+    text = String(text).replace(/^﻿/, '');   // strip BOM if Excel added one
+
+    for (var i = 0; i < text.length; i++) {
+        var c = text.charAt(i);
+
+        if (inQuotes) {
+            if (c === '"') {
+                if (text.charAt(i + 1) === '"') { field += '"'; i++; }
+                else { inQuotes = false; }
+            } else {
+                field += c;
+            }
+        } else if (c === '"') {
+            inQuotes = true;
+        } else if (c === ',' || c === ';' || c === '\t') {
+            row.push(field);
+            field = '';
+        } else if (c === '\n') {
+            row.push(field);
+            rows.push(row);
+            row = [];
+            field = '';
+        } else if (c !== '\r') {
+            field += c;
+        }
+    }
+    row.push(field);
+    rows.push(row);
+
+    return rows.filter(function (r) {
+        return r.some(function (v) { return String(v).trim() !== ''; });
+    });
+}
+
+/* ---------- find the right columns ---------- */
+/* Works whether the CSV comes from Excel with headers, extra columns,
+   or no header row at all. */
+function detectColumns(rows) {
+    var cols = { vehicle: 0, date: 1, remark: 2, headerRow: -1 };
+    if (!rows.length) return cols;
+
+    var first = rows[0].map(function (v) { return String(v).toLowerCase().trim(); });
+    var isHeader = first.some(function (h) {
+        return /vehicle|truck|number|no\.?$|reg|date|remark/.test(h);
+    }) && !rows[0].some(looksLikeVehicleNumber);
+
+    if (isHeader) {
+        cols.headerRow = 0;
+        cols.vehicle = -1;
+        cols.date = -1;
+        cols.remark = -1;
+
+        first.forEach(function (h, i) {
+            if (cols.vehicle < 0 && /vehicle|truck|reg|number|no\.?$/.test(h)) cols.vehicle = i;
+            if (cols.date < 0 && /date|day|checked on/.test(h)) cols.date = i;
+            if (cols.remark < 0 && /remark|status|note/.test(h)) cols.remark = i;
+        });
+    }
+
+    // Fall back to (or double-check with) the first data row's content
+    var sample = rows[cols.headerRow + 1] || rows[0] || [];
+
+    if (cols.vehicle < 0 || !looksLikeVehicleNumber(sample[cols.vehicle] || '')) {
+        for (var i = 0; i < sample.length; i++) {
+            if (looksLikeVehicleNumber(sample[i])) { cols.vehicle = i; break; }
+        }
+    }
+    if (cols.vehicle < 0) cols.vehicle = 0;
+
+    if (cols.date < 0 || !looksLikeDate(sample[cols.date] || '')) {
+        cols.date = -1;
+        for (var j = 0; j < sample.length; j++) {
+            if (j !== cols.vehicle && looksLikeDate(sample[j])) { cols.date = j; break; }
+        }
+    }
+
+    return cols;
+}
+
+/* Group rows by normalized number. Duplicates keep the latest checked date. */
+function buildVehicles(rows) {
+    var cols = detectColumns(rows);
+    var data = cols.headerRow === 0 ? rows.slice(1) : rows;
+
+    var map = Object.create(null);
+    var order = [];
+
+    data.forEach(function (row) {
+        var raw = String(row[cols.vehicle] || '').trim();
+        var key = normalizeVehicleNumber(raw);
+        if (!key) return;
+
+        var dateText = cols.date >= 0 ? String(row[cols.date] || '').trim() : '';
+        var remark   = cols.remark >= 0 ? String(row[cols.remark] || '').trim() : '';
+
+        var rec = map[key];
+        if (!rec) {
+            rec = {
+                key: key,
+                display: raw.toUpperCase(),
+                dateText: dateText,
+                dateValue: parseDateValue(dateText),
+                remark: remark,
+                times: 0
+            };
+            map[key] = rec;
+            order.push(rec);
+        }
+
+        rec.times++;
+
+        var value = parseDateValue(dateText);
+        if (value >= rec.dateValue) {          // duplicates: keep the latest date
+            rec.dateText = dateText;
+            rec.dateValue = value;
+            if (remark) rec.remark = remark;
+        }
+    });
+
+    return order;
+}
+
+/* ---------- load the CSV ---------- */
+
+/* GitHub Pages is case sensitive, so try the usual spellings too */
+var CSV_CANDIDATES = [CSV_FILE, 'Vehicles.csv', 'vehicles.CSV', 'vehicles.csv.txt'];
+
+function showLoadError(reason, hint) {
+    dataReady = false;
+    vehicles = [];
+    resultsBox.innerHTML = '';
+    hideSuggestions();
+    statusBox.className = 'data-status error';
+    statusBox.innerHTML =
+        '&#9888;&#65039; Unable to load vehicle data.<br>' +
+        escapeHtml(hint) +
+        '<br><span class="reason">Reason: ' + escapeHtml(reason) + '</span>' +
+        '<br><button type="button" id="retryBtn" class="btn btn-clear">&#8635; Try again</button>';
+    var retry = document.getElementById('retryBtn');
+    if (retry) retry.addEventListener('click', loadData);
+}
+
+function loadData() {
+    statusBox.className = 'data-status';
+    statusBox.textContent = 'Loading vehicle data…';
+
+    // Opened straight from the hard disk: browsers block reading local files
+    if (location.protocol === 'file:') {
+        showLoadError(
+            'The page was opened as a local file (file://), where the browser blocks reading vehicles.csv.',
+            'Open the page through its GitHub Pages web address (https://…), not by double-clicking the file.'
+        );
+        return;
+    }
+
+    var firstReason = '';
+
+    function attempt(index) {
+        if (index >= CSV_CANDIDATES.length) {
+            showLoadError(
+                firstReason || 'vehicles.csv was not found next to index.html.',
+                'Please check that vehicles.csv exists in the GitHub repository, in the same folder as index.html, spelled exactly "vehicles.csv".'
+            );
+            return;
+        }
+
+        var file = CSV_CANDIDATES[index];
+
+        // cache-buster so the daily CSV update is picked up on refresh
+        fetch(file + '?v=' + Date.now(), { cache: 'no-store' })
+            .then(function (res) {
+                if (!res.ok) throw new Error(file + ' returned HTTP ' + res.status +
+                                             (res.status === 404 ? ' (file not found)' : ''));
+                return res.text();
+            })
+            .then(function (text) {
+                var list = buildVehicles(parseCSV(text));
+                if (!list.length) {
+                    throw new Error(file + ' loaded but contains no vehicle numbers.');
+                }
+
+                vehicles = list;
+                dataReady = true;
+                statusBox.className = 'data-status';
+                statusBox.textContent = 'Checked list loaded: ' + vehicles.length +
+                    ' vehicles already checked.';
+
+                if (input.value.trim()) runSearch(input.value);
+            })
+            .catch(function (err) {
+                if (!firstReason) {   // report the problem with vehicles.csv itself
+                    firstReason = (err && err.message) ? err.message : 'network error';
+                }
+                attempt(index + 1);
+            });
+    }
+
+    attempt(0);
+}
+
+/* ---------- search ---------- */
+
+function findMatches(query) {
+    var q = normalizeVehicleNumber(query);
+    if (!q) return [];
+    return vehicles.filter(function (v) { return v.key.indexOf(q) !== -1; });
+}
+
+/* ---------- suggestions ---------- */
+
+function showSuggestions(query) {
+    if (!dataReady) { hideSuggestions(); return; }
+
+    var q = normalizeVehicleNumber(query);
+    if (!q) { hideSuggestions(); return; }
+
+    var matches = findMatches(q);
+    if (!matches.length) { hideSuggestions(); return; }
+
+    currentSuggestions = matches.slice(0, MAX_SUGGESTIONS);
+    activeIndex = -1;
+
+    var html = currentSuggestions.map(function (v, i) {
+        return '<li role="option" data-index="' + i + '">' +
+                 '<span><span class="dot">&#128308;</span> ' + escapeHtml(v.display) + '</span>' +
+                 '<span class="tag tag-red">ALREADY CHECKED</span>' +
+               '</li>';
+    }).join('');
+
+    if (matches.length > currentSuggestions.length) {
+        html += '<li class="more">+' + (matches.length - currentSuggestions.length) +
+                ' more &mdash; tap Search to see all</li>';
+    }
+
+    suggestBox.innerHTML = html;
+    suggestBox.hidden = false;
+}
+
+function hideSuggestions() {
+    suggestBox.hidden = true;
+    suggestBox.innerHTML = '';
+    currentSuggestions = [];
+    activeIndex = -1;
+}
+
+function highlight(delta) {
+    if (suggestBox.hidden || !currentSuggestions.length) return;
+
+    activeIndex += delta;
+    if (activeIndex < 0) activeIndex = currentSuggestions.length - 1;
+    if (activeIndex >= currentSuggestions.length) activeIndex = 0;
+
+    var items = suggestBox.querySelectorAll('li[data-index]');
+    for (var i = 0; i < items.length; i++) {
+        items[i].classList.toggle('active', i === activeIndex);
+    }
+    if (items[activeIndex]) items[activeIndex].scrollIntoView({ block: 'nearest' });
+}
+
+/* ---------- result cards ---------- */
+
+/* found in vehicles.csv -> already checked */
+function checkedCard(v) {
+    return '<div class="card red">' +
+             '<p class="status">&#128308; ALREADY CHECKED</p>' +
+             '<p class="plate">' + escapeHtml(v.display) + '</p>' +
+             (v.dateText
+                ? '<p class="meta"><span class="label">Checked Date</span>' +
+                  '<span class="value">' + escapeHtml(v.dateText) + '</span></p>'
+                : '') +
+             (v.remark
+                ? '<p class="meta"><span class="label">Remark</span>' +
+                  '<span class="value">' + escapeHtml(v.remark) + '</span></p>'
+                : '') +
+             (v.times > 1
+                ? '<p class="meta">Checked ' + v.times + ' times (latest date shown)</p>'
+                : '') +
+             '<p class="note">&#9888;&#65039; DO NOT CHECK THIS VEHICLE</p>' +
+           '</div>';
+}
+
+/* not in vehicles.csv -> not checked yet */
+function notCheckedCard(typed) {
+    var q = normalizeVehicleNumber(typed);
+    var full = looksLikeVehicleNumber(q);
+
+    return '<div class="card green">' +
+             '<p class="status">&#128994; NOT CHECKED</p>' +
+             '<p class="plate">' + escapeHtml(full ? q : typed) + '</p>' +
+             (full
+                ? '<p class="meta">This vehicle is not in the checked list.</p>'
+                : '<p class="meta">No vehicle in the checked list matches this search.</p>') +
+             '<p class="meta"><span class="label">Remark</span>' +
+             '<span class="value">Check this vehicle</span></p>' +
+             '<p class="note">&#10003; CHECK THIS VEHICLE</p>' +
+           '</div>';
+}
+
+function rowCard(v) {
+    return '<div class="row-card red">' +
+             '<div>' +
+               '<div class="plate">&#128308; ' + escapeHtml(v.display) + '</div>' +
+               (v.dateText ? '<div class="sub">Checked Date: ' + escapeHtml(v.dateText) + '</div>' : '') +
+             '</div>' +
+             '<div class="state">ALREADY<br>CHECKED</div>' +
+           '</div>';
+}
+
+var LIST_NOTE = '<p class="list-note">Only already-checked vehicles are listed above. ' +
+                'Any vehicle that does not appear has NOT been checked yet.</p>';
+
+/* ---------- run a search ---------- */
+
+function runSearch(rawQuery) {
+    hideSuggestions();
+
+    var typed = String(rawQuery || '').trim();
+    if (!typed) { resultsBox.innerHTML = ''; return; }
+
+    if (!dataReady) {
+        // never show fake results when the CSV could not be loaded
+        resultsBox.innerHTML = '';
+        statusBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+    }
+
+    var q = normalizeVehicleNumber(typed);
+    var matches = findMatches(q);
+
+    // nothing in the checked list -> the vehicle can be checked
+    if (!matches.length) {
+        resultsBox.innerHTML = notCheckedCard(typed);
+        return;
+    }
+
+    var exact = null;
+    for (var i = 0; i < matches.length; i++) {
+        if (matches[i].key === q) { exact = matches[i]; break; }
+    }
+
+    // one clear answer
+    if (matches.length === 1 || exact) {
+        var main = exact || matches[0];
+        var others = matches.filter(function (v) { return v !== main; });
+        var html = checkedCard(main);
+        if (others.length) {
+            html += '<p class="results-title">Other checked vehicles matching "' +
+                    escapeHtml(typed) + '" (' + others.length + ')</p>' +
+                    others.map(rowCard).join('') + LIST_NOTE;
+        }
+        resultsBox.innerHTML = html;
+        return;
+    }
+
+    // partial search (e.g. last 4 digits) -> list every checked vehicle that matches
+    resultsBox.innerHTML =
+        '<p class="results-title">Already checked vehicles matching "' + escapeHtml(typed) +
+        '" (' + matches.length + ')</p>' +
+        matches.map(rowCard).join('') + LIST_NOTE;
+}
+
+/* ---------- events ---------- */
+
+function pick(v) {
+    input.value = v.display;
+    hideSuggestions();
+    runSearch(v.display);
+    input.blur();
+}
+
+input.addEventListener('input', function () {
+    showSuggestions(input.value);
+});
+
+input.addEventListener('focus', function () {
+    if (input.value.trim()) showSuggestions(input.value);
+});
+
+input.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); highlight(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); highlight(-1); }
+    else if (e.key === 'Escape') { hideSuggestions(); }
+    else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (activeIndex > -1 && currentSuggestions[activeIndex]) {
+            pick(currentSuggestions[activeIndex]);        // highlighted suggestion
+        } else {
+            runSearch(input.value);                       // plain Enter / phone "Go" key
+            input.blur();
+        }
+    }
+});
+
+suggestBox.addEventListener('click', function (e) {
+    var li = e.target.closest('li[data-index]');
+    if (!li) return;
+    var v = currentSuggestions[Number(li.getAttribute('data-index'))];
+    if (v) pick(v);
+});
+
+form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    runSearch(input.value);
+    input.blur();
+});
+
+clearBtn.addEventListener('click', function () {
+    input.value = '';
+    resultsBox.innerHTML = '';
+    hideSuggestions();
+    input.focus();
+});
+
+document.addEventListener('click', function (e) {
+    if (!e.target.closest('.input-wrap')) hideSuggestions();
+});
+
+loadData();
+</script>
+</body>
+</html>
